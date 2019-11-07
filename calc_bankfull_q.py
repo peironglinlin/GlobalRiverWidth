@@ -1,29 +1,32 @@
 from netCDF4 import Dataset
 import pandas as pd
 import numpy as np
+import xarray as xr
 import os
 from scipy.stats import norm,lognorm,gumbel_r,pearson3
 import scipy.stats
+# import multiprocessing as mp
 from mpi4py import MPI
 
-# MPI setup
+#MPI setup
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
+ndays = 12784
+time = pd.date_range(start='1/1/1979', periods=ndays, freq='D')
+indices = [np.where(time=='%s-01-01'%yyyy)[0][0] for yyyy in range(1979,2014)]
+distributions = [norm,lognorm,gumbel_r,pearson3] #normal, log-normal,gumbel,log-pearson Type III
+
 def get_annual_max_q(qq):
-    """return N years of annual maximum Q; input: 35-year of daily streamflow"""
-    ndays = 12784
-    time = pd.date_range(start='1/1/1979', periods=ndays, freq='D')
-    indices = [np.where(time=='%s-01-01'%yyyy)[0][0] for yyyy in range(1979,2014)]
+    """return N years of annual maximum Q; input: 35-year of daily streamflow""" 
     qmax = [max(qq[index:indices[i+1]]) for i,index in enumerate(indices[0:len(indices)-1])] #returning annual maximum
     qmax.append(max(qq[indices[-1]:len(qq)]))
     return qmax
 
 
-def get_best_fit_distribution(qmax,bins):
+def get_best_fit_distribution(data,bins):
     """return a best fitted statistical distribution for peak flow; input: annual maximum Q (at least 10 valid points)"""
-    data = qmax
     if len(data)<10:
         print('... WARNING: sample size < 10, may not produce reliable distribution ...')
     
@@ -35,11 +38,9 @@ def get_best_fit_distribution(qmax,bins):
     best_distribution = norm
     best_params = (0.0, 1.0)
     best_sse = np.inf  #sum of square error for choosing the best fit
-    distributions = [norm,lognorm,gumbel_r,pearson3] #normal, log-normal,gumbel,log-pearson Type III
     
     #finding the best distribution with the least sum of square error
     for distribution in distributions:
-#         print('   fitting %s'%distribution.name)
         # fit dist to data
         params = distribution.fit(data)
         
@@ -84,7 +85,7 @@ def find_nearest_index(array, value):
     """Find nearest index in an array whose value is closest to input value"""
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
-    return idx #return the index of the nearest value
+    return idx #return the index of the nearest valu
 
 
 def get_bankfull_discharge(qq):
@@ -108,24 +109,28 @@ def get_bankfull_discharge(qq):
 if __name__ == '__main__':
     pfaf = 1
     print('...PFAF = %02d ...'%pfaf)
-    path = '/tigress/peirongl/MERIT/raster/rapid-run/output_rapid/new/'
-    fin = os.path.join(path,'GRADES_Q_v01_pfaf_%02d_19790101_20131231.nc'%pfaf)
-    nc = Dataset(fin)
-    qall = nc.variables['Q']
-    comid = nc.variables['COMID']
-    nf = len(qall)
+    fin = "chunked_pfaf_%02d.nc"%pfaf #netcdf chunking before (nccopy -c"time/100,COMID/1000" input.nc output.nc) for efficient slicing
+    ds = xr.open_dataset(fin, chunks = {'time': 100, 'COMID':1000})
+    comid = ds.COMID
+    nf = len(comid)
+    print('... nf = %s ...'%nf)
 
     Q2_list = []
     Q5_list = []
     QMEAN_list = []
     for i in range(nf)[rank::size]:
-        comidnow = comid[i]
+        comidnow = ds.COMID[i].values
         print('... COMID = %s ...'%comidnow)
-        qq = qall[i]
+#         import pdb;pdb.set_trace()
+        qq = ds.Q[:,i].values
         q2,q5 = get_bankfull_discharge(qq)
         QMEAN_list.append(np.mean(qq))
         Q2_list.append(q2)
         Q5_list.append(q5)
+#         df = pd.DataFrame({'QMEAN':[qmean],'Q2':[q2]})
+#         df.to_csv('tmp/bankfull_q_%s.csv'%comidnow,index=False)
 
-    df = pd.DataFrame({'COMID':comid[:nf],'QMEAN':QMEAN_list,'Q2':Q2_list,'Q5':Q5_list})
+    df = pd.DataFrame({'COMID':comid[:nf].values,'QMEAN':QMEAN_list,'Q2':Q2_list,'Q5':Q5_list})
     df.to_csv('bankfull_q_pfaf_%02d.csv'%pfaf,index=False)
+    
+       
