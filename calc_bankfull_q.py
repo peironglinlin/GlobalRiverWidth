@@ -13,6 +13,10 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
+#Input: NetCDF data containing 35 years of modeled daily discharge for all rivers (Time, COMID)
+#Note if the NetCDF  is too large, chunking is needed for pre-processing in order to fast access time series data for each river
+#Output: csv file containing COMID, QMEAN, and Q2
+
 ndays = 12784
 time = pd.date_range(start='1/1/1979', periods=ndays, freq='D')
 indices = [np.where(time=='%s-01-01'%yyyy)[0][0] for yyyy in range(1979,2014)]
