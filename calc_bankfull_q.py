@@ -78,7 +78,8 @@ def make_pdf(dist, params, size=5000):
     y = dist.pdf(x, loc=loc, scale=scale, *arg)
     pdf = pd.Series(y, x)
     
-    return pdf
+    interval = float((end-start))/size
+    return pdf,interval
 
 
 def find_nearest_index(array, value):
@@ -94,8 +95,8 @@ def get_bankfull_discharge(qq):
     bins = 50
     dist_name,params = get_best_fit_distribution(qmax,bins)
     best_dist = getattr(scipy.stats, dist_name)
-    pdf = make_pdf(best_dist,params)
-    cdf = pdf.cumsum()
+    pdf, interval = make_pdf(best_dist,params)
+    cdf = pdf.cumsum()*interval
     data = cdf.reset_index()
     data.columns = ['Q','CDF']
     data['PDF'] = pdf.values
