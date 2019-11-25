@@ -5,6 +5,8 @@ import geopandas as gpd
 from shapely.geometry import Point,Polygon
 
 #intersect MERIT width GRWL such that reach-averaging in Step 2 can be conducted
+#INPUT: all MERIT flowlines shapefile; all GRWL shapefiles
+#OUTPUT: a csv file containing their join [segmentID,segmentInd,COMID,distance,width_m,nchannels,lakeFlag,lon,lat,elev_m]
 
 def generate_MERIT_bounds(files):
     names = []
@@ -141,6 +143,6 @@ dfnew = join_MERIT_with_GRWL(files, polygons)
 
 #final join GRWL width MERIT
 allpoints = final_join_MERIT_GRWL(dfnew)
-fon = 'join_final_GRWL_MERIT.csv'
+fon = 'all_table_MERIT_GRWL.csv'
 print('... writing to '+fon+' ...')
 allpoints.to_csv(fon,index=False)
