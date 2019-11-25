@@ -4,6 +4,8 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point,Polygon
 
+#intersect MERIT width GRWL such that reach-averaging in Step 2 can be conducted
+
 def generate_MERIT_bounds(files):
     names = []
     latS = []
