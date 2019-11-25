@@ -4,6 +4,7 @@ import numpy as np
 import rasterio as rio
 import math
 
+#PURPOSE: Extracting all width values for each MERIT flowline segment
 #INPUT: 8 shapefiles containing the MERIT river flowlines and their intersected MERIT tile number (pre-processed using Python GeoPandas sjoin function)
 #INPUT: all MERIT Hydro tiles (1150 tiles) stored in GeoTiff format
 #OUTPUT: A csv file listing COMID, and all cross-sectional widths read from different MERIT Hydro tiles
